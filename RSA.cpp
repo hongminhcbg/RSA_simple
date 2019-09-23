@@ -101,7 +101,7 @@ int public_decrypt(unsigned char * enc_data,int data_len,unsigned char * key, un
 "uJSUVL5+CVjKLjZEJ6Qc2WZLl94xSwL71E41H4YciVnSCQxVc4Jw\n"\
 "-----END RSA PRIVATE KEY-----\n";
 
-unsigned char plainText[2048/8] = "123456789012345678901234567890"; //key length : 2048
+unsigned char plainText[2048/8] = "123456789012345678901234567890hfdskhfsdhkfhkdshfjksdhfjhsminh1234956854dfhsdkj"; //key length : 2048
 unsigned char  encrypted[4098]={};
 unsigned char decrypted[4098]={};
 /*****************************************/
@@ -112,9 +112,11 @@ int main(){
         printf("Public Encrypt failed \n");
         return 0;
     } else {
-        printf("encrypted_length = %d\n", encrypted_length);
+        printf("encrypted_length = %d\ndata encrypt = ", encrypted_length);
+        for (int i = 0; i < encrypted_length; i++){
+            printf("%02x %c", encrypted[i], i == (encrypted_length - 1) ? '\n' : ' ');
+        }    
     }
-    
 
     int decrypted_length = private_decrypt(encrypted, encrypted_length, privateKey, decrypted);
     
