@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <string.h>
+#include <stdint.h>
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
 #include <openssl/rsa.h>
@@ -10,20 +11,30 @@
 using namespace std;
 
 #define uc unsigned char
-// #define FILEIN "videoin.mp4"
-// #define FILEOUT "videoout.mp4"
+#define FILEIN "videoout.mp4"
+#define FILEOUT "videoout2.mp4"
 // #define FILEIN "pictureout.jpg"
 // #define FILEOUT "pictureout2.jpg"
-#define FILEIN "textout.txt"
-#define FILEOUT "textout2.txt"
+// #define FILEIN "textout.txt"
+// #define FILEOUT "textout2.txt"
 #define NUM_ALPHA 1000
 #define FIRST_READ (256)
-
+#define MAX_LEN_B64 (256)
 
 FILE * f1 = fopen(FILEIN, "rb");
 FILE * f2 = fopen(FILEOUT, "wb");
 uc buffer[NUM_ALPHA + 1];
 int num;
+static char encoding_table[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+                                'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
+                                'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+                                'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
+                                'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
+                                'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
+                                'w', 'x', 'y', 'z', '0', '1', '2', '3',
+                                '4', '5', '6', '7', '8', '9', '-', '_'};
+static char *decoding_table = NULL;
+
 /*****************RSA config*****************/
 unsigned char decrypted[4098]={};
 int padding = RSA_PKCS1_PADDING;
@@ -89,52 +100,109 @@ int private_decrypt(unsigned char * enc_data, int data_len, unsigned char * key,
 }
 
 /*********************************/
+// decode base 64 funtion
+void build_decoding_table() {
+    decoding_table = (char*) malloc(256);
+
+    for (int i = 0; i < 64; i++){
+        decoding_table[(unsigned char) encoding_table[i]] = i;
+    }    
+}
+
+unsigned char *base64_decode(unsigned char *data, int inputLength, int *output_length) {
+    if (decoding_table == NULL) build_decoding_table();
+    *output_length = inputLength / 4 * 3;
+    if (data[inputLength - 1] == '=') (*output_length)--;
+    if (data[inputLength - 2] == '=') (*output_length)--;
+    unsigned char *decoded_data = (unsigned char*) malloc(*output_length);
+    if (decoded_data == NULL) return NULL;
+    for (int i = 0, j = 0; i < inputLength;) {
+
+        uint32_t sextet_a = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
+        uint32_t sextet_b = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
+        uint32_t sextet_c = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
+        uint32_t sextet_d = data[i] == '=' ? 0 & i++ : decoding_table[data[i++]];
+
+        uint32_t triple = (sextet_a << 3 * 6)
+        + (sextet_b << 2 * 6)
+        + (sextet_c << 1 * 6)
+        + (sextet_d << 0 * 6);
+
+        if (j < *output_length) decoded_data[j++] = (triple >> 2 * 8) & 0xFF;
+        if (j < *output_length) decoded_data[j++] = (triple >> 1 * 8) & 0xFF;
+        if (j < *output_length) decoded_data[j++] = (triple >> 0 * 8) & 0xFF;
+    }
+    //printf("[LHM log %d] end base64_decode\n", __LINE__);
+
+    return decoded_data;
+}
+
 int main(){
     printf("\n\n\n----------------Begin Decript---------\n");
-    int sumReadByte = 0;    
+    int sumWriteByte = 0;    
     int num = 0;
     memset(buffer, 0, NUM_ALPHA);
 
+    // step 1 read file
     num = fread(buffer, sizeof(char), FIRST_READ, f1);
-    if(num) { // read succecc
-        printf("read first %d byte\n", num);
+    if(num == FIRST_READ) { // read succecc
+        printf("step1: read first %d byte success\n", num);
     } else {
-        printf("read first false \n");        
+        printf("step1: read first %d byte false \n", FIRST_READ);
+        return 0;        
     }
-    
-    sumReadByte += num;
-    buffer[FIRST_READ + 1] = '\0';
 
+    // step 2 decode RSA
     int decript_length = private_decrypt(buffer, FIRST_READ, privateKey, decrypted);
 
     if (decript_length == -1){
-        printf("flase Decription\n");
+        printf("step2: RSA decode flase\n");
     } else {
-        printf("first read length = %d\ndata read = \n", num);
+        printf("step2: RSA decode sucess\ndata read : \n");
         for (int i = 0; i < num; i++){
-            printf("%02x %c", buffer[i], (i % 20 == 0 && i != 0) ? '\n' : '\t');
+            printf("%02x %c", buffer[i], (i+1) % 16 == 0 ? '\n' : '\t');
         }
         printf("\n");
         
-        printf("decript_length = %d\ndata decrypt = \n", decript_length);
+        printf("decript_length = %d, data decrypt: \n", decript_length);
         for (int i = 0; i < decript_length; i++){
-            printf("%02x %c", decrypted[i], (i % 20 == 0 && i != 0) ? '\n' : '\t');
-            fwrite(decrypted, sizeof(char), decript_length, f2); 
+            printf("%c", decrypted[i]);
         }
         printf("\n");
     }
+
+    // step3 encode base 64 decrypted
+    unsigned char *b64Decode = (unsigned char*) malloc(MAX_LEN_B64);
+    int b64OutLen = 0;
+    b64Decode = base64_decode(decrypted, decript_length, &b64OutLen);
+    if(b64Decode == NULL){
+        printf("step3: decde base 64 false\n");
+        return 0;
+    } else {
+        printf("b64OutLen = %d, data decode base 64:\n", b64OutLen);
+        for(int i = 0; i < b64OutLen; i++){
+            printf("%02X %c", b64Decode[i], (i + 1) % 16 == 0 ? '\n' : '\t');
+        }
+        printf("\n");
+        fwrite(b64Decode, sizeof(uc), b64OutLen, f2);
+        sumWriteByte += b64OutLen;
+    }
+
     while(1){
         memset(buffer, 0, sizeof(buffer));
         num = fread(buffer, sizeof(uc), NUM_ALPHA, f1 );
         if ( num ) {  /* fread success */
             fwrite(buffer, sizeof(uc), num, f2);
-            sumReadByte += num;  
+            sumWriteByte += num;  
         } else {  /* fread failed */
-            if ( ferror(f1) )    /* possibility 1 */
+            if ( ferror(f1) ){    /* possibility 1 */
                 perror( "Error reading myfile" );
-            else if ( feof(f1)){  /* possibility 2 */
+                printf("step 4: write date to file out error");
+            }
+            else if ( feof(f1) ){  /* possibility 2 */
                 perror( "EOF found");
-                printf("read all %d bytes in %s\n", sumReadByte, FILEIN);
+                printf("wirite all %d bytes to %s\n", sumWriteByte, FILEOUT);
+                printf("step 4: write date to file out success\n===============>done Decrypt\n\n");
             }
             break;
         }
