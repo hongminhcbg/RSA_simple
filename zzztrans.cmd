@@ -1,0 +1,1 @@
+"C:\Users\Administrator\Desktop\pscp\pscp.exe" -pw MQ@123456789 "encode.cpp" "decodeLHM.cpp" "decodeLHM.h" "main.cpp" "Makefile" pi@192.168.6.77:/home/pi/drmFile

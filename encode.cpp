@@ -51,7 +51,7 @@ static int mod_table[] = {0, 2, 1};
 
 /************************/
 // public encrypt RSA
-RSA * createRSA(unsigned char * key,int publicc)
+RSA * createRSA(unsigned char * key, int publicc)
 {
     RSA *rsa= NULL;
     BIO *keybio ;
