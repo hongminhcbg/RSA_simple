@@ -1,5 +1,8 @@
 #ifndef _DECODELHM_H_
 #define _DECODELHM_H_
-    //void decode(unsigned char *path);
+#include <iostream>
+#include <string>
+using namespace std;
+    int decodeLHM(string path);
     void printHelo();
 #endif
