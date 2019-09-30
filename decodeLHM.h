@@ -4,5 +4,6 @@
 #include <string>
 using namespace std;
     int decodeLHM(string path);
+    string getFileOutNameLHM(string fileIn);
     void printHelo();
 #endif

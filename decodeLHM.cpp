@@ -137,7 +137,7 @@ unsigned char *base64_decode(unsigned char *data, int inputLength, int *output_l
     return decoded_data;
 }
 
-string getFileOutName(string fileIn){
+string getFileOutNameLHM(string fileIn){
     int index = -1;
     for(int i = 0; i < fileIn.length(); i++){
         if(fileIn[i] == '.'){
@@ -152,7 +152,7 @@ string getFileOutName(string fileIn){
     return pos + "_decode" + fileType;
 }
 int decodeLHM(string fileIn){
-    string fileOut = getFileOutName(fileIn);
+    string fileOut = getFileOutNameLHM(fileIn);
     if (fileOut == fileIn){
         return 0;
     }
